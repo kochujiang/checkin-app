@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tägliches Check-in Tool</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff;
+    --bg2: #f5f4f0;
+    --bg3: #eeede8;
+    --text: #1a1a18;
+    --text2: #6b6a64;
+    --text3: #9c9b94;
+    --border: rgba(0,0,0,0.12);
+    --border2: rgba(0,0,0,0.22);
+    --purple: #7F77DD;
+    --purple-light: #EEEDFE;
+    --purple-dark: #3C3489;
+    --green: #1D9E75;
+    --green-light: #E1F5EE;
+    --green-dark: #085041;
+    --amber: #BA7517;
+    --amber-light: #FAEEDA;
+    --amber-dark: #633806;
+    --coral: #D85A30;
+    --coral-light: #FAECE7;
+    --coral-dark: #712B13;
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a;
+      --bg2: #252523;
+      --bg3: #2e2e2b;
+      --text: #e8e6de;
+      --text2: #a09e96;
+      --text3: #6b6a64;
+      --border: rgba(255,255,255,0.1);
+      --border2: rgba(255,255,255,0.2);
+      --purple-light: #2a2850;
+      --purple-dark: #AFA9EC;
+      --green-light: #0d3326;
+      --green-dark: #9FE1CB;
+      --amber-light: #2e2208;
+      --amber-dark: #FAC775;
+      --coral-light: #2e1208;
+      --coral-dark: #F0997B;
+    }
+  }
+  body {
+    font-family: -apple-system, 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  .container { max-width: 600px; margin: 0 auto; }
+  h1 {
+    font-size: 22px; font-weight: 500;
+    margin-bottom: 4px;
+    color: var(--text);
+  }
+  .subtitle { font-size: 13px; color: var(--text2); margin-bottom: 1.5rem; }
+  .tab-bar { display: flex; gap: 8px; margin-bottom: 1.25rem; }
+  .tab {
+    flex: 1; padding: 8px; font-size: 13px; font-weight: 500;
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    background: none; cursor: pointer;
+    color: var(--text2);
+    transition: all 0.15s;
+  }
+  .tab.active {
+    background: var(--bg2);
+    color: var(--text);
+    border-color: var(--border2);
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .panel-desc { font-size: 13px; color: var(--text2); margin-bottom: 1rem; line-height: 1.6; }
+  .section-label {
+    font-size: 11px; font-weight: 500; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin: 1.25rem 0 8px;
+  }
+  .q-card {
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+    margin-bottom: 8px;
+    background: var(--bg);
+  }
+  .q-card.personal {
+    border-left: 3px solid var(--purple);
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  }
+  .q-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+  .q-text { font-size: 14px; color: var(--text); margin-bottom: 6px; line-height: 1.6; font-weight: 500; }
+  .q-hint { font-size: 12px; color: var(--text2); margin-bottom: 10px; line-height: 1.5; font-style: italic; }
+  .q-answer { display: flex; gap: 8px; }
+  .answer-btn {
+    flex: 1; padding: 7px 4px; font-size: 12px; font-weight: 500;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    background: none; cursor: pointer;
+    transition: all 0.15s;
+    color: var(--text2);
+  }
+  .answer-btn:hover { background: var(--bg2); }
+  .answer-btn.sel-ja { background: var(--green-light); border-color: var(--green); color: var(--green-dark); }
+  .answer-btn.sel-teils { background: var(--amber-light); border-color: var(--amber); color: var(--amber-dark); }
+  .answer-btn.sel-nein { background: var(--coral-light); border-color: var(--coral); color: var(--coral-dark); }
+  .result-box {
+    margin-top: 1.25rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border);
+    background: var(--bg2);
+    display: none;
+  }
+  .result-box.visible { display: block; }
+  .result-bar-wrap { height: 8px; background: var(--bg3); border-radius: 999px; overflow: hidden; margin: 8px 0 4px; }
+  .result-bar { height: 100%; border-radius: 999px; transition: width 0.4s ease; }
+  .result-label { font-size: 12px; color: var(--text2); }
+  .result-msg { font-size: 14px; font-weight: 500; color: var(--text); margin-top: 8px; }
+  .legend {
+    display: flex; gap: 16px; margin-bottom: 1.25rem;
+    font-size: 12px; color: var(--text2); align-items: center; flex-wrap: wrap;
+  }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .reset-btn {
+    width: 100%; margin-top: 1rem; padding: 9px;
+    font-size: 13px; color: var(--text2);
+    background: none; border: 0.5px solid var(--border);
+    border-radius: var(--radius); cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--bg2); }
+  .personal-tag {
+    font-size: 10px;
+    background: var(--purple-light);
+    color: var(--purple-dark);
+    padding: 1px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 2px;
+  }
+  .q-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Persönliches Check-in</h1>
+  <p class="subtitle">Täglich · Wöchentlich · Im Moment — für ehrliche Selbstwahrnehmung</p>
+
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('daily')">Täglich</button>
+    <button class="tab" onclick="switchTab('weekly')">Wöchentlich</button>
+    <button class="tab" onclick="switchTab('moment')">Im Moment</button>
+  </div>
+
+  <!-- TÄGLICH -->
+  <div class="panel active" id="panel-daily">
+    <p class="panel-desc">Jeden Abend – dauert 3 Minuten. Sei ehrlich, niemand sieht es außer dir.</p>
+    <div class="legend">
+      <div style="display:flex;align-items:center;gap:5px"><div class="legend-dot" style="background:#7F77DD"></div> Direkt relevant für dich</div>
+      <div style="display:flex;align-items:center;gap:5px"><div class="legend-dot" style="background:rgba(0,0,0,0.2)"></div> Allgemein</div>
+    </div>
+
+    <div class="section-label">Vermeidung</div>
+    <div class="q-card personal">
+      <div class="q-header">
+        <p class="q-label">Frage 1</p>
+        <span class="personal-tag">für dich</span>
+      </div>
+      <p class="q-text">Gab es heute etwas, das ich ansprechen wollte – aber nicht getan habe?</p>
+      <p class="q-hint">Wenn ja: Was war der Gedanke, der mich gestoppt hat?</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','d1')">Nein, hab's gesagt</button>
+        <button class="answer-btn" onclick="answer(this,'teils','d1')">Teils</button>
+        <button class="answer-btn" onclick="answer(this,'nein','d1')">Ja, vermieden</button>
+      </div>
+    </div>
+    <div class="q-card personal">
+      <div class="q-header">
+        <p class="q-label">Frage 2</p>
+        <span class="personal-tag">für dich</span>
+      </div>
+      <p class="q-text">Habe ich heute ein Versprechen gemacht, das ich nicht halten werde?</p>
+      <p class="q-hint">Auch kleine Versprechen zählen – "ich kümmere mich darum"</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','d2')">Kein Versprechen</button>
+        <button class="answer-btn" onclick="answer(this,'teils','d2')">Bin unsicher</button>
+        <button class="answer-btn" onclick="answer(this,'nein','d2')">Ja, versprochen</button>
+      </div>
+    </div>
+
+    <div class="section-label">Präsenz & Verbindung</div>
+    <div class="q-card">
+      <p class="q-label">Frage 3</p>
+      <p class="q-text">War ich heute wirklich präsent – oder habe ich mich innerlich weggeduckt?</p>
+      <p class="q-hint">Handy weggelegt, zugehört, Blickkontakt gehalten?</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','d3')">Präsent</button>
+        <button class="answer-btn" onclick="answer(this,'teils','d3')">Teils</button>
+        <button class="answer-btn" onclick="answer(this,'nein','d3')">Weggeduckt</button>
+      </div>
+    </div>
+    <div class="q-card personal">
+      <div class="q-header">
+        <p class="q-label">Frage 4</p>
+        <span class="personal-tag">für dich</span>
+      </div>
+      <p class="q-text">Habe ich heute zugehört – ohne sofort eine Lösung anzubieten?</p>
+      <p class="q-hint">Hat sie etwas erzählt? Habe ich einfach da sein können?</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','d4')">Ja</button>
+        <button class="answer-btn" onclick="answer(this,'teils','d4')">Teils</button>
+        <button class="answer-btn" onclick="answer(this,'nein','d4')">Nein</button>
+      </div>
+    </div>
+
+    <div class="section-label">Selbstwahrnehmung</div>
+    <div class="q-card personal">
+      <div class="q-header">
+        <p class="q-label">Frage 5</p>
+        <span class="personal-tag">für dich</span>
+      </div>
+      <p class="q-text">Habe ich heute meine eigenen Gefühle wahrgenommen – oder verdrängt?</p>
+      <p class="q-hint">Frustration, Angst, Trauer – was war da heute?</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','d5')">Wahrgenommen</button>
+        <button class="answer-btn" onclick="answer(this,'teils','d5')">Teils</button>
+        <button class="answer-btn" onclick="answer(this,'nein','d5')">Verdrängt</button>
+      </div>
+    </div>
+
+    <div id="result-daily" class="result-box">
+      <div class="result-label" id="daily-label"></div>
+      <div class="result-bar-wrap"><div class="result-bar" id="daily-bar"></div></div>
+      <p class="result-msg" id="daily-msg"></p>
+    </div>
+    <button class="reset-btn" onclick="resetPanel('daily')">Zurücksetzen</button>
+  </div>
+
+  <!-- WÖCHENTLICH -->
+  <div class="panel" id="panel-weekly">
+    <p class="panel-desc">Jeden Sonntag – ehrliche Bilanz der Woche.</p>
+
+    <div class="section-label">Beziehung</div>
+    <div class="q-card personal">
+      <div class="q-header"><p class="q-label">Frage 1</p><span class="personal-tag">für dich</span></div>
+      <p class="q-text">Habe ich diese Woche ein schwieriges Thema aktiv angesprochen?</p>
+      <p class="q-hint">Nicht abwarten bis sie es tut – selbst initiieren</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','w1')">Ja</button>
+        <button class="answer-btn" onclick="answer(this,'teils','w1')">Teils</button>
+        <button class="answer-btn" onclick="answer(this,'nein','w1')">Nein</button>
+      </div>
+    </div>
+    <div class="q-card personal">
+      <div class="q-header"><p class="q-label">Frage 2</p><span class="personal-tag">für dich</span></div>
+      <p class="q-text">Habe ich diese Woche ihre Gefühle anerkannt – ohne mich zu verteidigen?</p>
+      <p class="q-hint">Konnte ich "das tut mir leid" sagen ohne ein "aber"?</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','w2')">Ja</button>
+        <button class="answer-btn" onclick="answer(this,'teils','w2')">Teils</button>
+        <button class="answer-btn" onclick="answer(this,'nein','w2')">Nein</button>
+      </div>
+    </div>
+
+    <div class="section-label">Veränderung & Wachstum</div>
+    <div class="q-card personal">
+      <div class="q-header"><p class="q-label">Frage 3</p><span class="personal-tag">für dich</span></div>
+      <p class="q-text">Habe ich diese Woche etwas getan, das meiner Veränderung dient?</p>
+      <p class="q-hint">Therapietermin, Buch gelesen, Gespräch geführt, reflektiert</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','w3')">Ja</button>
+        <button class="answer-btn" onclick="answer(this,'teils','w3')">Teils</button>
+        <button class="answer-btn" onclick="answer(this,'nein','w3')">Nein</button>
+      </div>
+    </div>
+    <div class="q-card">
+      <p class="q-label">Frage 4</p>
+      <p class="q-text">Gab es einen Moment wo ich in ein altes Muster gefallen bin?</p>
+      <p class="q-hint">Vermeidung, Versprechen, Rückzug – was war diese Woche der Trigger?</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','w4')">Kein Rückfall</button>
+        <button class="answer-btn" onclick="answer(this,'teils','w4')">Einmal</button>
+        <button class="answer-btn" onclick="answer(this,'nein','w4')">Mehrmals</button>
+      </div>
+    </div>
+
+    <div class="section-label">Mental Load & Präsenz</div>
+    <div class="q-card">
+      <p class="q-label">Frage 5</p>
+      <p class="q-text">Habe ich diese Woche Verantwortung übernommen – ohne Aufforderung?</p>
+      <p class="q-hint">Haushalt, Organisation, Termine – von selbst gehandelt statt gewartet</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','w5')">Ja</button>
+        <button class="answer-btn" onclick="answer(this,'teils','w5')">Teils</button>
+        <button class="answer-btn" onclick="answer(this,'nein','w5')">Nein</button>
+      </div>
+    </div>
+    <div class="q-card personal">
+      <div class="q-header"><p class="q-label">Frage 6</p><span class="personal-tag">für dich</span></div>
+      <p class="q-text">Wie geht es ihr – und weiß ich das wirklich, weil ich gefragt habe?</p>
+      <p class="q-hint">Nicht raten. Wirklich gefragt und zugehört?</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','w6')">Weiß es</button>
+        <button class="answer-btn" onclick="answer(this,'teils','w6')">Ungefähr</button>
+        <button class="answer-btn" onclick="answer(this,'nein','w6')">Nicht gefragt</button>
+      </div>
+    </div>
+
+    <div id="result-weekly" class="result-box">
+      <div class="result-label" id="weekly-label"></div>
+      <div class="result-bar-wrap"><div class="result-bar" id="weekly-bar"></div></div>
+      <p class="result-msg" id="weekly-msg"></p>
+    </div>
+    <button class="reset-btn" onclick="resetPanel('weekly')">Zurücksetzen</button>
+  </div>
+
+  <!-- IM MOMENT -->
+  <div class="panel" id="panel-moment">
+    <p class="panel-desc">Wenn du merkst, dass du gerade in ein Muster fällst – stop, atme, beantworte diese Fragen.</p>
+
+    <div class="q-card personal">
+      <div class="q-header"><p class="q-label">Stopp-Frage 1</p><span class="personal-tag">für dich</span></div>
+      <p class="q-text">Denke ich gerade "jetzt ist nicht der richtige Moment"?</p>
+      <p class="q-hint">Wenn ja: Wann wäre der richtige Moment? Wirklich?</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','m1')">Nein</button>
+        <button class="answer-btn" onclick="answer(this,'nein','m1')">Ja – Muster aktiv</button>
+      </div>
+    </div>
+    <div class="q-card personal">
+      <div class="q-header"><p class="q-label">Stopp-Frage 2</p><span class="personal-tag">für dich</span></div>
+      <p class="q-text">Bin ich dabei, etwas zu versprechen das ich nicht halten werde?</p>
+      <p class="q-hint">Pause. Sage nichts, was du nicht wirklich meinst.</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','m2')">Nein</button>
+        <button class="answer-btn" onclick="answer(this,'nein','m2')">Ja – Stopp</button>
+      </div>
+    </div>
+    <div class="q-card personal">
+      <div class="q-header"><p class="q-label">Stopp-Frage 3</p><span class="personal-tag">für dich</span></div>
+      <p class="q-text">Verteidige ich mich gerade – oder höre ich wirklich zu?</p>
+      <p class="q-hint">Wenn ich schon die Gegenargumente im Kopf formuliere: Ich höre nicht zu.</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','m3')">Höre zu</button>
+        <button class="answer-btn" onclick="answer(this,'nein','m3')">Verteidige mich</button>
+      </div>
+    </div>
+    <div class="q-card">
+      <p class="q-label">Stopp-Frage 4</p>
+      <p class="q-text">Was fühle ich gerade – und woher kommt das?</p>
+      <p class="q-hint">Angst? Scham? Überforderung? Benennen hilft, bevor man reagiert.</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','m4')">Weiß es</button>
+        <button class="answer-btn" onclick="answer(this,'teils','m4')">Unklar</button>
+        <button class="answer-btn" onclick="answer(this,'nein','m4')">Keine Ahnung</button>
+      </div>
+    </div>
+    <div class="q-card personal">
+      <div class="q-header"><p class="q-label">Stopp-Frage 5</p><span class="personal-tag">für dich</span></div>
+      <p class="q-text">Was wäre der mutigste nächste Schritt – den ich gerade vermeiden will?</p>
+      <p class="q-hint">Genau das ist wahrscheinlich das Richtige.</p>
+      <div class="q-answer">
+        <button class="answer-btn" onclick="answer(this,'ja','m5')">Ich tue es</button>
+        <button class="answer-btn" onclick="answer(this,'nein','m5')">Noch nicht</button>
+      </div>
+    </div>
+    <button class="reset-btn" onclick="resetPanel('moment')">Zurücksetzen</button>
+  </div>
+</div>
+
+<script>
+const state = { daily: {}, weekly: {}, moment: {} };
+const panels = { daily: 5, weekly: 6, moment: 5 };
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const names = ['daily','weekly','moment'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+function answer(btn, val, key) {
+  const panel = key[0] === 'd' ? 'daily' : key[0] === 'w' ? 'weekly' : 'moment';
+  btn.closest('.q-card').querySelectorAll('.answer-btn').forEach(b => {
+    b.classList.remove('sel-ja','sel-teils','sel-nein');
+  });
+  btn.classList.add('sel-' + val);
+  state[panel][key] = val;
+  if (panel !== 'moment') updateResult(panel);
+}
+
+function updateResult(panel) {
+  const total = panels[panel];
+  const answers = state[panel];
+  if (Object.keys(answers).length < total) return;
+  let score = 0;
+  Object.values(answers).forEach(v => {
+    if (v === 'ja') score += 2;
+    else if (v === 'teils') score += 1;
+  });
+  const max = total * 2;
+  const pct = Math.round((score / max) * 100);
+  document.getElementById(panel + '-bar').style.width = pct + '%';
+  document.getElementById(panel + '-bar').style.background = pct >= 70 ? '#1D9E75' : pct >= 40 ? '#BA7517' : '#D85A30';
+  document.getElementById(panel + '-label').textContent = pct + '% — ' + score + ' von ' + max + ' Punkten';
+  document.getElementById(panel + '-msg').textContent =
+    pct >= 70 ? 'Guter Tag. Du bist auf dem richtigen Weg – bleib dran.' :
+    pct >= 40 ? 'Gemischter Tag. Was war der schwächste Punkt? Genau da ansetzen.' :
+    'Schwieriger Tag. Kein Urteil – aber heute Abend einen konkreten Schritt machen.';
+  document.getElementById('result-' + panel).classList.add('visible');
+}
+
+function resetPanel(panel) {
+  state[panel] = {};
+  document.querySelectorAll('#panel-' + panel + ' .answer-btn').forEach(b => {
+    b.classList.remove('sel-ja','sel-teils','sel-nein');
+  });
+  const box = document.getElementById('result-' + panel);
+  if (box) box.classList.remove('visible');
+}
+</script>
+</body>
+</html>
